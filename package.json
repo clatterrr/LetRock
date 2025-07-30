@@ -2,15 +2,15 @@
   "name": "cos-file-manager",
   "version": "1.0.0",
   "description": "腾讯云COS文件管理器",
-  "main": "server.js",
+
+  "main": "dev-server.js",
   "scripts": {
     "start": "node dev-server.js",
     "dev": "nodemon dev-server.js",
-    "build": "echo 'Build completed'",
-    "vercel-build": "echo 'Vercel build completed'"
+    "build": "npm install",
+    "vercel-build": "npm install"
   },
   "dependencies": {
-    "axios": "^1.6.7",
     "cors": "^2.8.5",
     "cos-nodejs-sdk-v5": "^2.12.1",
     "dotenv": "^16.3.1",

@@ -1,7 +1,6 @@
 // 加载环境变量
 require('dotenv').config();
 
-const axios = require('axios');
 const crypto = require('crypto');
 
 // zhaoli 配置
@@ -30,12 +29,17 @@ export default async function handler(req, res) {
                 "AppKey": APP_KEY,
                 "AppSign": sign
             };
-            const zlRes = await axios.post(
+            // 使用内置的 fetch (Node.js 18+)
+            const zlRes = await fetch(
                 "https://api.zhaoli.com/v-w-c/gateway/ve/work/free",
-                body,
-                { headers }
+                {
+                    method: 'POST',
+                    headers: headers,
+                    body: body
+                }
             );
-            const taskId = zlRes.data.body.dataList[0].id;
+            const data = await zlRes.json();
+            const taskId = data.body.dataList[0].id;
             res.status(200).json({ success: true, taskId });
         } catch (e) {
             res.status(500).json({ success: false, message: e.message });

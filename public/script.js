@@ -115,7 +115,7 @@ async function testConnection() {
     showStatus('正在测试连接...', 'info');
     
     try {
-        const response = await apiFetch('/api/test-connection');
+        const response = await apiFetch('/api/cos?action=test-connection');
         const data = await response.json();
         
         if (data.success) {
@@ -161,55 +161,139 @@ async function handleFileUpload(event) {
     uploadProgress.style.display = 'block';
     progressList.innerHTML = '';
     
-    const formData = new FormData();
+    // 为每个文件创建进度条
     for (let file of files) {
-        formData.append('files', file);
-        
-        // 创建进度条
         const progressItem = createProgressItem(file.name);
         progressList.appendChild(progressItem);
     }
     
+    const results = [];
+    
     try {
-        const response = await apiFetch('/api/upload', {
-            method: 'POST',
-            body: formData
-        });
+        console.log('🚀 开始上传文件...', files.length, '个文件');
         
-        const data = await response.json();
+        // 逐个上传文件
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            console.log(`📤 上传文件 ${i + 1}/${files.length}:`, file.name);
+            
+            try {
+                // 1. 获取上传URL
+                const urlResponse = await apiFetch('/api/cos?action=get-upload-url', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        fileType: file.type
+                    })
+                });
+                
+                console.log('📡 获取上传URL响应:', urlResponse.status);
+                
+                if (!urlResponse.ok) {
+                    const errorText = await urlResponse.text();
+                    console.error('❌ 获取上传URL失败:', errorText);
+                    throw new Error(`获取上传URL失败: ${errorText}`);
+                }
+                
+                const urlData = await urlResponse.json();
+                console.log('✅ 获取上传URL成功:', urlData);
+                
+                if (!urlData.success) {
+                    throw new Error(urlData.message || '获取上传URL失败');
+                }
+                
+                // 2. 直接上传到腾讯云
+                console.log('📤 开始上传到腾讯云...');
+                const uploadResponse = await fetch(urlData.uploadUrl, {
+                    method: 'PUT',
+                    body: file,
+                    headers: {
+                        'Content-Type': file.type || 'application/octet-stream'
+                    }
+                });
+                
+                console.log('📡 腾讯云上传响应:', uploadResponse.status);
+                
+                if (!uploadResponse.ok) {
+                    const errorText = await uploadResponse.text();
+                    console.error('❌ 腾讯云上传失败:', errorText);
+                    throw new Error(`腾讯云上传失败: ${uploadResponse.status} ${errorText}`);
+                }
+                
+                // 更新进度条
+                updateProgressItem(i, 100);
+                
+                results.push({
+                    originalName: file.name,
+                    success: true,
+                    key: urlData.key,
+                    url: `https://${urlData.bucket}.cos.${urlData.region}.myqcloud.com/${urlData.key}`
+                });
+                
+                console.log('✅ 文件上传成功:', file.name);
+                
+            } catch (fileError) {
+                console.error('❌ 文件上传失败:', file.name, fileError);
+                updateProgressItem(i, 0, fileError.message);
+                
+                results.push({
+                    originalName: file.name,
+                    success: false,
+                    error: fileError.message
+                });
+            }
+        }
         
-        if (data.success) {
-            showStatus(data.message, 'success');
-            showModal('上传成功', `
+        // 显示上传结果
+        const successCount = results.filter(r => r.success).length;
+        const failCount = results.length - successCount;
+        
+        if (successCount > 0) {
+            showStatus(`成功上传 ${successCount} 个文件${failCount > 0 ? `，${failCount} 个失败` : ''}`, 'success');
+            showModal('上传完成', `
                 <div style="color: #28a745;">
-                    <i class="fas fa-check-circle"></i> ${data.message}
+                    <i class="fas fa-check-circle"></i> 上传完成
                 </div>
                 <div style="margin-top: 15px;">
-                    <strong>上传的文件:</strong>
+                    <strong>上传结果:</strong>
                     <ul style="margin-top: 5px;">
-                        ${data.files.map(file => `<li>${file.originalName}</li>`).join('')}
+                        ${results.map(result => 
+                            `<li style="color: ${result.success ? '#28a745' : '#dc3545'}">
+                                ${result.originalName} - ${result.success ? '成功' : '失败: ' + result.error}
+                            </li>`
+                        ).join('')}
                     </ul>
                 </div>
             `);
             
-            // 更新进度条为完成状态
-            updateAllProgress(100);
-            
             // 刷新文件列表
             setTimeout(loadFiles, 1000);
         } else {
-            showStatus(data.message, 'error');
+            showStatus('所有文件上传失败', 'error');
             showModal('上传失败', `
                 <div style="color: #dc3545;">
-                    <i class="fas fa-exclamation-circle"></i> ${data.message}
+                    <i class="fas fa-exclamation-circle"></i> 所有文件上传失败
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                    详细错误信息已输出到控制台
                 </div>
             `);
         }
+        
     } catch (error) {
+        console.error('❌ 上传过程中发生错误:', error);
+        console.error('❌ 错误堆栈:', error.stack);
+        
         showStatus('上传失败: ' + error.message, 'error');
         showModal('上传失败', `
             <div style="color: #dc3545;">
                 <i class="fas fa-exclamation-circle"></i> 上传失败: ${error.message}
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                详细错误信息已输出到控制台
             </div>
         `);
     } finally {
@@ -217,7 +301,7 @@ async function handleFileUpload(event) {
         fileInput.value = ''; // 清空文件选择
         setTimeout(() => {
             uploadProgress.style.display = 'none';
-        }, 3000);
+        }, 5000);
     }
 }
 
@@ -229,7 +313,7 @@ async function loadFiles() {
         filesList.innerHTML = '<div class="loading">加载中...</div>';
         
         try {
-            const response = await apiFetch('/api/files');
+            const response = await apiFetch('/api/cos?action=files');
             const data = await response.json();
             
             if (data.success) {
@@ -290,7 +374,7 @@ function displayFiles(files) {
 // 下载文件
 async function downloadFile(objectKey) {
     try {
-        const response = await apiFetch('/api/download-url', {
+        const response = await apiFetch('/api/cos?action=download-url', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -383,6 +467,26 @@ function updateAllProgress(percentage) {
     });
 }
 
+function updateProgressItem(index, percentage, errorMessage = null) {
+    const progressItems = progressList.querySelectorAll('.progress-item');
+    if (progressItems[index]) {
+        const progressFill = progressItems[index].querySelector('.progress-fill');
+        const progressText = progressItems[index].querySelector('.progress-text');
+        
+        if (errorMessage) {
+            progressFill.style.width = '0%';
+            progressFill.style.backgroundColor = '#dc3545';
+            progressText.textContent = '失败';
+            progressText.style.color = '#dc3545';
+        } else {
+            progressFill.style.width = percentage + '%';
+            progressFill.style.backgroundColor = percentage === 100 ? '#28a745' : '#007bff';
+            progressText.textContent = percentage + '%';
+            progressText.style.color = percentage === 100 ? '#28a745' : '#007bff';
+        }
+    }
+}
+
 function getFileName(key) {
     const fileName = key.split('/').pop() || key;
     // 尝试解码文件名
@@ -421,7 +525,7 @@ let videoFiles = [];
 
 // 获取文件列表并渲染
 async function loadVideoFiles() {
-    const response = await apiFetch('/api/files');
+    const response = await apiFetch('/api/cos?action=files');
     const data = await response.json();
     if (data.success) {
         videoFiles = data.files.map((file, idx) => ({
