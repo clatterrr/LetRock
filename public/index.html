@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>腾讯云COS文件管理器</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-cloud"></i> 腾讯云COS文件管理器</h1>
+            <p>轻松管理您的云存储文件</p>
+        </header>
+
+        <div class="user-section">
+            <div class="user-row">
+                <input type="text" id="machineIdInput" placeholder="请输入或生成用户码" maxlength="64">
+                <button id="copyMachineId" class="btn btn-primary">复制</button>
+            </div>
+            <div class="user-row">
+                <button id="generateMachineId" class="btn btn-info">生成并使用用户码</button>
+                <button id="queryPoint" class="btn btn-success">查询当前用户码积分</button>
+            </div>
+            <div id="pointDisplay" class="point-display">当前积分：--</div>
+        </div>
+
+        <div class="main-content">
+            <!-- 操作按钮区域 -->
+            <div class="action-buttons">
+                <button id="testConnection" class="btn btn-primary">
+                    <i class="fas fa-plug"></i> 测试连接
+                </button>
+                <button id="uploadFiles" class="btn btn-success">
+                    <i class="fas fa-upload"></i> 上传文件
+                </button>
+                <button id="refreshFiles" class="btn btn-info">
+                    <i class="fas fa-refresh"></i> 刷新文件列表
+                </button>
+            </div>
+
+            <!-- 隐藏的文件输入 -->
+            <input type="file" id="fileInput" multiple style="display: none;">
+
+            <!-- 状态显示区域 -->
+            <div id="status" class="status-area"></div>
+
+            <!-- 上传进度区域 -->
+            <div id="uploadProgress" class="upload-progress" style="display: none;">
+                <h3><i class="fas fa-spinner fa-spin"></i> 上传进度</h3>
+                <div id="progressList"></div>
+            </div>
+        </div>
+
+        <div class="video-manager">
+            <div class="video-controls">
+                <button id="selectAllBtn" class="btn btn-info">全选</button>
+                <button id="deselectAllBtn" class="btn btn-secondary">取消选择</button>
+                <button id="batchProcessZhaoli" class="btn btn-success" disabled>处理已选择</button>
+                <button id="batchDownloadZhaoli" class="btn btn-warning" disabled>下载已选择</button>
+            </div>
+            <div class="table-scroll">
+            <table class="video-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAllCheckbox"></th>
+                        <th>编号</th>
+                        <th>文件名</th>
+                        <th>文件类型</th>
+                        <th>大小</th>
+                        <th>task id</th>
+                        <th>状态</th>
+                        <th>腾讯云地址</th>
+                        <th>上传时间</th>
+                    </tr>
+                </thead>
+                <tbody id="videoList"></tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">操作结果</h2>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
