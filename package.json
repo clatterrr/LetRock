@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node dev-server.js",
     "dev": "nodemon dev-server.js",
+    "build": "echo 'Build completed'",
     "vercel-build": "echo 'Vercel build completed'"
   },
   "dependencies": {
