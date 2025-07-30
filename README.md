@@ -21,13 +21,23 @@
 
 ## 安装和运行
 
-### 1. 安装依赖
+### 本地开发
+
+#### 1. 安装依赖
 
 ```bash
 npm install
 ```
 
-### 2. 启动服务器
+#### 2. 配置环境变量
+
+复制 `.env.example` 为 `.env` 并填入您的配置：
+
+```bash
+cp .env.example .env
+```
+
+#### 3. 启动开发服务器
 
 ```bash
 # 开发模式（自动重启）
@@ -37,9 +47,39 @@ npm run dev
 npm start
 ```
 
-### 3. 访问应用
+#### 4. 访问应用
 
 打开浏览器访问: http://localhost:3000
+
+### Vercel 部署
+
+#### 1. 安装 Vercel CLI
+
+```bash
+npm i -g vercel
+```
+
+#### 2. 登录 Vercel
+
+```bash
+vercel login
+```
+
+#### 3. 部署项目
+
+```bash
+vercel
+```
+
+#### 4. 配置环境变量
+
+在 Vercel 控制台中设置以下环境变量：
+- `COS_SECRET_ID`
+- `COS_SECRET_KEY`
+- `COS_BUCKET`
+- `COS_REGION`
+- `ZHAOLI_API_KEY`
+- `ZHAOLI_API_SECRET`
 
 ## 配置说明
 
@@ -77,13 +117,23 @@ const region = '您的存储桶地域';
 
 ```
 theme7/
-├── server.js          # Express服务器
-├── package.json       # 项目配置
+├── api/               # Vercel API 路由
+│   ├── test-connection.js
+│   ├── files.js
+│   ├── upload.js
+│   ├── create_machine.js
+│   ├── query_point.js
+│   ├── zl_policy.js
+│   ├── process_zhaoli.js
+│   └── status_zhaoli.js
 ├── public/            # 静态文件
 │   ├── index.html     # 主页面
 │   ├── style.css      # 样式文件
 │   └── script.js      # 前端脚本
-├── uploads/           # 临时上传目录
+├── .env               # 环境变量配置
+├── .gitignore         # Git 忽略文件
+├── vercel.json        # Vercel 配置
+├── package.json       # 项目配置
 └── README.md          # 项目说明
 ```
 

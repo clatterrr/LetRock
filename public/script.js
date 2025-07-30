@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 页面加载时获取文件列表
 document.addEventListener('DOMContentLoaded', () => {
-    loadFiles();
+    loadVideoFiles();
 });
 
 // 测试连接
@@ -221,34 +221,40 @@ async function handleFileUpload(event) {
     }
 }
 
-// 加载文件列表
+// 加载文件列表（兼容旧版本）
 async function loadFiles() {
-    setButtonLoading(refreshFilesBtn, true);
-    filesList.innerHTML = '<div class="loading">加载中...</div>';
-    
-    try {
-        const response = await apiFetch('/api/files');
-        const data = await response.json();
+    // 如果存在 filesList 元素，使用旧版本逻辑
+    if (filesList) {
+        setButtonLoading(refreshFilesBtn, true);
+        filesList.innerHTML = '<div class="loading">加载中...</div>';
         
-        if (data.success) {
-            displayFiles(data.files);
-        } else {
+        try {
+            const response = await apiFetch('/api/files');
+            const data = await response.json();
+            
+            if (data.success) {
+                displayFiles(data.files);
+            } else {
+                filesList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>加载文件列表失败: ${data.message}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
             filesList.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <p>加载文件列表失败: ${data.message}</p>
+                    <p>网络错误: ${error.message}</p>
                 </div>
             `;
+        } finally {
+            setButtonLoading(refreshFilesBtn, false);
         }
-    } catch (error) {
-        filesList.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>网络错误: ${error.message}</p>
-            </div>
-        `;
-    } finally {
-        setButtonLoading(refreshFilesBtn, false);
+    } else {
+        // 否则调用新版本的函数
+        loadVideoFiles();
     }
 }
 
@@ -399,7 +405,7 @@ function formatFileSize(bytes) {
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleString('zh-CN');
-} 
+}
 
 // fetch包装，自动加/api/前缀
 function apiFetch(url, options) {
@@ -408,12 +414,13 @@ function apiFetch(url, options) {
         else url = '/api/' + url;
     }
     return fetch(url, options);
-} 
+}
 
+// Zhaoli 相关功能
 let videoFiles = [];
 
 // 获取文件列表并渲染
-async function loadFiles() {
+async function loadVideoFiles() {
     const response = await apiFetch('/api/files');
     const data = await response.json();
     if (data.success) {
@@ -442,6 +449,8 @@ function getFileType(name) {
 
 function renderVideoList() {
     const tbody = document.getElementById('videoList');
+    if (!tbody) return; // 如果元素不存在，直接返回
+    
     tbody.innerHTML = videoFiles.map((file, i) => `
         <tr class="${file.selected ? 'selected' : ''}">
             <td><input type="checkbox" ${file.selected ? 'checked' : ''} onchange="toggleSelect(${i})"></td>
@@ -460,38 +469,18 @@ function renderVideoList() {
 
 function updateBatchButtons() {
     const hasSelected = videoFiles.some(f => f.selected);
-    document.getElementById('batchProcessZhaoli').disabled = !hasSelected;
-    document.getElementById('batchDownloadZhaoli').disabled = !hasSelected;
+    const batchProcessBtn = document.getElementById('batchProcessZhaoli');
+    const batchDownloadBtn = document.getElementById('batchDownloadZhaoli');
+    
+    if (batchProcessBtn) batchProcessBtn.disabled = !hasSelected;
+    if (batchDownloadBtn) batchDownloadBtn.disabled = !hasSelected;
 }
 
+// 全局函数，供 HTML 调用
 window.toggleSelect = function(idx) {
     videoFiles[idx].selected = !videoFiles[idx].selected;
     renderVideoList();
 }
-
-document.getElementById('selectAllBtn').onclick = function() {
-    videoFiles.forEach(f => f.selected = true);
-    renderVideoList();
-};
-document.getElementById('deselectAllBtn').onclick = function() {
-    videoFiles.forEach(f => f.selected = false);
-    renderVideoList();
-};
-document.getElementById('selectAllCheckbox').onchange = function(e) {
-    videoFiles.forEach(f => f.selected = e.target.checked);
-    renderVideoList();
-};
-
-document.getElementById('batchProcessZhaoli').onclick = async function() {
-    for (let i = 0; i < videoFiles.length; ++i) {
-        if (videoFiles[i].selected) await processZhaoliSingle(i);
-    }
-};
-document.getElementById('batchDownloadZhaoli').onclick = async function() {
-    for (let i = 0; i < videoFiles.length; ++i) {
-        if (videoFiles[i].selected) await downloadZhaoliSingle(i);
-    }
-};
 
 window.processZhaoliSingle = async function(idx) {
     const file = videoFiles[idx];
@@ -546,11 +535,48 @@ window.downloadZhaoliSingle = async function(idx) {
     renderVideoList();
 }
 
-function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
-}
+// 批量操作事件监听器
+document.addEventListener('DOMContentLoaded', () => {
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const batchProcessZhaoli = document.getElementById('batchProcessZhaoli');
+    const batchDownloadZhaoli = document.getElementById('batchDownloadZhaoli');
 
-// 页面加载时自动加载文件列表
-window.addEventListener('DOMContentLoaded', loadFiles); 
+    if (selectAllBtn) {
+        selectAllBtn.onclick = function() {
+            videoFiles.forEach(f => f.selected = true);
+            renderVideoList();
+        };
+    }
+    
+    if (deselectAllBtn) {
+        deselectAllBtn.onclick = function() {
+            videoFiles.forEach(f => f.selected = false);
+            renderVideoList();
+        };
+    }
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.onchange = function(e) {
+            videoFiles.forEach(f => f.selected = e.target.checked);
+            renderVideoList();
+        };
+    }
+
+    if (batchProcessZhaoli) {
+        batchProcessZhaoli.onclick = async function() {
+            for (let i = 0; i < videoFiles.length; ++i) {
+                if (videoFiles[i].selected) await processZhaoliSingle(i);
+            }
+        };
+    }
+    
+    if (batchDownloadZhaoli) {
+        batchDownloadZhaoli.onclick = async function() {
+            for (let i = 0; i < videoFiles.length; ++i) {
+                if (videoFiles[i].selected) await downloadZhaoliSingle(i);
+            }
+        };
+    }
+}); 

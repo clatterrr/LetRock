@@ -102,3 +102,4 @@ secrets.json
 # 其他
 *.tgz
 *.tar.gz 
+.vercel
